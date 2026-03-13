@@ -1,0 +1,603 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<title>Virtual Piano Pro</title>
+
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
+
+<style>
+
+*{
+margin:0;
+padding:0;
+box-sizing:border-box;
+}
+
+:root{
+--accent:#6c63ff;
+--accent2:#ff6584;
+--text:#ffffff;
+}
+
+body{
+
+font-family:'Inter',sans-serif;
+
+min-height:100vh;
+
+display:flex;
+flex-direction:column;
+align-items:center;
+
+background:
+radial-gradient(circle at 20% 20%,#2a2a5a,transparent 40%),
+radial-gradient(circle at 80% 30%,#4a1f5f,transparent 40%),
+radial-gradient(circle at 50% 80%,#1c3b6b,transparent 40%),
+#0f0f1a;
+
+color:var(--text);
+
+overflow-x:hidden;
+}
+
+.title{
+
+margin-top:20px;
+
+font-size:32px;
+
+font-weight:700;
+
+letter-spacing:1px;
+
+background:linear-gradient(90deg,#6c63ff,#ff6584);
+-webkit-background-clip:text;
+-webkit-text-fill-color:transparent;
+
+text-shadow:0 0 20px rgba(108,99,255,.5);
+}
+
+.control-panel{
+
+width:95%;
+max-width:900px;
+
+margin:20px;
+
+padding:16px;
+
+border-radius:16px;
+
+background:rgba(255,255,255,0.08);
+backdrop-filter:blur(25px);
+
+border:1px solid rgba(255,255,255,0.15);
+
+display:flex;
+flex-wrap:wrap;
+gap:10px;
+
+justify-content:center;
+
+box-shadow:0 10px 40px rgba(0,0,0,.4);
+}
+
+.ctrl-btn{
+
+padding:7px 12px;
+
+border-radius:10px;
+
+border:1px solid rgba(255,255,255,0.15);
+
+background:rgba(255,255,255,0.05);
+
+color:white;
+
+cursor:pointer;
+
+transition:.25s;
+}
+
+.ctrl-btn:hover{
+
+transform:translateY(-2px) scale(1.05);
+
+box-shadow:0 8px 20px rgba(0,0,0,.3);
+}
+
+.ctrl-btn.active{
+
+background:linear-gradient(135deg,#6c63ff,#8b7cff);
+
+box-shadow:0 0 15px rgba(108,99,255,.7);
+}
+
+input[type=range]{
+
+width:100px;
+}
+
+.piano-container{
+
+margin-top:20px;
+
+padding:25px;
+
+border-radius:20px;
+
+background:linear-gradient(145deg,#3e2723,#1f1512);
+
+box-shadow:
+0 30px 70px rgba(0,0,0,.7),
+inset 0 2px 0 rgba(255,255,255,.1);
+}
+
+.keyboard{
+
+display:flex;
+position:relative;
+
+height:200px;
+}
+
+.key{
+
+position:relative;
+
+cursor:pointer;
+
+transition:.1s;
+}
+
+.key.white{
+
+width:50px;
+height:200px;
+
+border-radius:0 0 10px 10px;
+
+background:linear-gradient(#fff,#dedede);
+
+border:1px solid #ccc;
+
+margin-right:2px;
+
+box-shadow:
+0 6px 10px rgba(0,0,0,.35),
+inset 0 2px 0 rgba(255,255,255,.9);
+}
+
+.key.white.pressed{
+
+transform:translateY(4px);
+
+background:linear-gradient(#ddd,#c9c9c9);
+
+box-shadow:inset 0 3px 6px rgba(0,0,0,.3);
+}
+
+.key.black{
+
+width:32px;
+height:120px;
+
+position:absolute;
+
+border-radius:0 0 8px 8px;
+
+background:linear-gradient(#333,#000);
+
+border:1px solid #000;
+
+box-shadow:0 6px 12px rgba(0,0,0,.7);
+
+z-index:2;
+}
+
+.key.black.pressed{
+
+transform:translateY(3px);
+
+background:#111;
+}
+
+.key:hover{
+
+transform:translateY(-3px) scale(1.02);
+}
+
+.note-label{
+
+position:absolute;
+
+bottom:6px;
+
+left:50%;
+
+transform:translateX(-50%);
+
+font-size:10px;
+
+opacity:.6;
+}
+
+.key.black .note-label{
+
+color:#aaa;
+
+font-size:9px;
+}
+
+canvas{
+
+margin-top:10px;
+
+width:90%;
+max-width:900px;
+height:60px;
+}
+
+</style>
+</head>
+
+<body>
+
+<h1 class="title">🎹 Virtual Piano Pro</h1>
+
+<div class="control-panel">
+
+<button class="ctrl-btn active" data-inst="sine">Piano</button>
+<button class="ctrl-btn" data-inst="square">Organ</button>
+<button class="ctrl-btn" data-inst="triangle">E-Piano</button>
+<button class="ctrl-btn" data-inst="sawtooth">Synth</button>
+
+<input type="range" id="volume" min="0" max="100" value="70">
+
+<button class="ctrl-btn" id="recordBtn">⏺ Record</button>
+<button class="ctrl-btn" id="playBtn">▶ Play</button>
+
+<button class="ctrl-btn" id="metroBtn">🔔 Metronome</button>
+
+</div>
+
+<canvas id="wave"></canvas>
+
+<div class="piano-container">
+
+<div class="keyboard" id="keyboard"></div>
+
+</div>
+
+<script>
+
+const noteNames=['C','C#','D','D#','E','F','F#','G','G#','A','A#','B']
+
+const white=['C','D','E','F','G','A','B']
+
+const blackMap={0:'C#',1:'D#',3:'F#',4:'G#',5:'A#'}
+
+let audioCtx
+let masterGain
+let analyser
+
+let instrument='sine'
+
+let active={}
+
+let recording=[]
+let recStart
+let recordingOn=false
+
+let metro=false
+let bpm=120
+let metroInt
+
+const keyboard=document.getElementById("keyboard")
+
+function initAudio(){
+
+audioCtx=new (window.AudioContext||window.webkitAudioContext)()
+
+masterGain=audioCtx.createGain()
+
+analyser=audioCtx.createAnalyser()
+
+masterGain.connect(analyser)
+analyser.connect(audioCtx.destination)
+
+masterGain.gain.value=.7
+
+}
+
+function freq(note,oct){
+
+return 440*Math.pow(2,(noteNames.indexOf(note)-9)/12+(oct-4))
+
+}
+
+function play(note,oct){
+
+if(!audioCtx)initAudio()
+
+const id=note+oct
+
+if(active[id])return
+
+const osc=audioCtx.createOscillator()
+
+const gain=audioCtx.createGain()
+
+osc.type=instrument
+osc.frequency.value=freq(note,oct)
+
+gain.gain.value=.001
+
+osc.connect(gain)
+gain.connect(masterGain)
+
+osc.start()
+
+gain.gain.exponentialRampToValueAtTime(.8,audioCtx.currentTime+.02)
+
+active[id]={osc,gain,note,oct}
+
+const el=document.querySelector(`[data-note="${note}"][data-oct="${oct}"]`)
+
+if(el)el.classList.add("pressed")
+
+if(recordingOn){
+
+recording.push({note,oct,time:Date.now()-recStart,type:'on'})
+
+}
+
+}
+
+function stop(note,oct){
+
+const id=note+oct
+
+const n=active[id]
+
+if(!n)return
+
+n.gain.gain.exponentialRampToValueAtTime(.001,audioCtx.currentTime+.3)
+
+n.osc.stop(audioCtx.currentTime+.31)
+
+delete active[id]
+
+const el=document.querySelector(`[data-note="${note}"][data-oct="${oct}"]`)
+
+if(el)el.classList.remove("pressed")
+
+if(recordingOn){
+
+recording.push({note,oct,time:Date.now()-recStart,type:'off'})
+
+}
+
+}
+
+function build(){
+
+keyboard.innerHTML=""
+
+let idx=0
+
+for(let o=4;o<=5;o++){
+
+white.forEach((n,i)=>{
+
+const k=document.createElement("div")
+
+k.className="key white"
+
+k.dataset.note=n
+k.dataset.oct=o
+
+const l=document.createElement("span")
+
+l.className="note-label"
+
+l.textContent=n
+
+k.appendChild(l)
+
+keyboard.appendChild(k)
+
+k.addEventListener("mousedown",()=>play(n,o))
+k.addEventListener("mouseup",()=>stop(n,o))
+k.addEventListener("mouseleave",()=>stop(n,o))
+
+if(i in blackMap){
+
+const bn=blackMap[i]
+
+const b=document.createElement("div")
+
+b.className="key black"
+
+b.dataset.note=bn
+b.dataset.oct=o
+
+b.style.left=(idx*52+36)+"px"
+
+const bl=document.createElement("span")
+
+bl.className="note-label"
+
+bl.textContent=bn
+
+b.appendChild(bl)
+
+keyboard.appendChild(b)
+
+b.addEventListener("mousedown",()=>play(bn,o))
+b.addEventListener("mouseup",()=>stop(bn,o))
+b.addEventListener("mouseleave",()=>stop(bn,o))
+
+}
+
+idx++
+
+})
+
+}
+
+}
+
+build()
+
+document.querySelectorAll("[data-inst]").forEach(b=>{
+
+b.onclick=()=>{
+
+document.querySelectorAll("[data-inst]").forEach(x=>x.classList.remove("active"))
+
+b.classList.add("active")
+
+instrument=b.dataset.inst
+
+}
+
+})
+
+document.getElementById("volume").oninput=e=>{
+
+if(masterGain)masterGain.gain.value=e.target.value/100
+
+}
+
+const recBtn=document.getElementById("recordBtn")
+
+recBtn.onclick=()=>{
+
+recordingOn=!recordingOn
+
+recBtn.classList.toggle("active")
+
+if(recordingOn){
+
+recording=[]
+recStart=Date.now()
+
+}
+
+}
+
+document.getElementById("playBtn").onclick=()=>{
+
+recording.forEach(e=>{
+
+setTimeout(()=>{
+
+if(e.type==="on")play(e.note,e.oct)
+else stop(e.note,e.oct)
+
+},e.time)
+
+})
+
+}
+
+function startMetro(){
+
+clearInterval(metroInt)
+
+metroInt=setInterval(()=>{
+
+if(!audioCtx)initAudio()
+
+const osc=audioCtx.createOscillator()
+
+const g=audioCtx.createGain()
+
+osc.frequency.value=800
+
+osc.connect(g)
+g.connect(audioCtx.destination)
+
+g.gain.value=.2
+
+osc.start()
+
+g.gain.exponentialRampToValueAtTime(.001,audioCtx.currentTime+.05)
+
+osc.stop(audioCtx.currentTime+.06)
+
+},60000/bpm)
+
+}
+
+document.getElementById("metroBtn").onclick=()=>{
+
+metro=!metro
+
+if(metro)startMetro()
+else clearInterval(metroInt)
+
+}
+
+const canvas=document.getElementById("wave")
+
+const ctx2=canvas.getContext("2d")
+
+function resize(){
+
+canvas.width=canvas.offsetWidth
+canvas.height=canvas.offsetHeight
+
+}
+
+window.onresize=resize
+
+resize()
+
+function draw(){
+
+requestAnimationFrame(draw)
+
+if(!analyser)return
+
+const buf=new Uint8Array(analyser.fftSize)
+
+analyser.getByteTimeDomainData(buf)
+
+ctx2.clearRect(0,0,canvas.width,canvas.height)
+
+ctx2.strokeStyle="#6c63ff"
+
+ctx2.lineWidth=2
+
+ctx2.beginPath()
+
+let x=0
+
+for(let i=0;i<buf.length;i++){
+
+let v=buf[i]/128
+
+let y=v*canvas.height/2
+
+if(i===0)ctx2.moveTo(x,y)
+else ctx2.lineTo(x,y)
+
+x+=canvas.width/buf.length
+
+}
+
+ctx2.stroke()
+
+}
+
+draw()
+
+</script>
+
+</body>
+</html>

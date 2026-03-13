@@ -1,0 +1,21 @@
+{
+  "name": "virtual-piano",
+  "version": "1.0.0",
+  "description": "A modern virtual piano with instruments, recording, waveform visualizer and metronome",
+  "main": "index.html",
+  "scripts": {
+    "start": "npx serve .",
+    "dev": "npx serve ."
+  },
+  "keywords": [
+    "piano",
+    "virtual-piano",
+    "music",
+    "web-audio",
+    "javascript"
+  ],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {},
+  "devDependencies": {}
+}
