@@ -1,1 +1,0 @@
-# vibecode_hackerearth
