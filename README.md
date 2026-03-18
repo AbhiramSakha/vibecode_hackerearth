@@ -4,7 +4,6 @@ This project is a simple web-based music instrument application.
 It allows users to interact with virtual instruments and play sounds using their browser.
 
 ## 📝 Features
-
 - Play multiple instruments from the browser
 - Responsive and user-friendly design
 - Includes HTML, CSS, and JavaScript files
